@@ -10,12 +10,16 @@ function App() {
 
   // Fetch posts once, on initial mount
   useEffect(() => {
+    const controller = new AbortController();
+
     async function loadPosts() {
       dispatch({ type: "FETCH_START" });
       try {
-        const data = await fetchPosts();
+        const data = await fetchPosts(controller.signal);
         dispatch({ type: "FETCH_SUCCESS", payload: data });
       } catch (err) {
+        // If we aborted the request ourselves (cleanup), it's not a real error
+        if (err.name === "AbortError") return;
         dispatch({
           type: "FETCH_ERROR",
           payload: err.message || "Something went wrong while loading posts.",
@@ -24,6 +28,9 @@ function App() {
     }
 
     loadPosts();
+
+    // Cleanup: cancel the request if the component unmounts
+    return () => controller.abort();
   }, []);
 
   // Derived state: filtered posts are calculated during render, NOT stored
